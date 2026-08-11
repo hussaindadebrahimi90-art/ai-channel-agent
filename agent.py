@@ -1,6 +1,7 @@
 import os
 import requests
 import xml.etree.ElementTree as ET
+import hashlib
 
 print("🤖 AI Channel Agent started!")
 
@@ -9,7 +10,7 @@ CHANNEL = "@HoshMasnoeiAI6"
 
 RSS_SOURCES = [
     "https://openai.com/news/rss.xml",
-    "https://blog.google/innovation-and-ai/rss/",
+    "https://blog.google/feed/",
 ]
 
 def send_message(text):
@@ -22,21 +23,40 @@ def send_message(text):
     response.raise_for_status()
     print("✅ پیام منتشر شد.")
 
-for rss_url in RSS_SOURCES:
-    try:
-        response = requests.get(rss_url, timeout=30)
-        response.raise_for_status()
+def get_item(rss_url):
+    response = requests.get(rss_url, timeout=30)
+    response.raise_for_status()
 
-        root = ET.fromstring(response.content)
-        item = root.find(".//item")
+    root = ET.fromstring(response.content)
+    item = root.find(".//item")
 
-        if item is not None:
-            title = item.findtext("title", "خبر جدید")
-            link = item.findtext("link", "")
+    if item is None:
+        return None
 
-            message = f"🤖 هوش مصنوعی\n\n{title}\n\n🔗 {link}"
-            send_message(message)
-            break
+    title = item.findtext("title", "خبر جدید").strip()
+    link = item.findtext("link", "").strip()
 
-    except Exception as e:
-        print(f"⚠️ منبع در دسترس نبود: {e}")
+    return title, link
+
+try:
+    for rss_url in RSS_SOURCES:
+        try:
+            item = get_item(rss_url)
+
+            if item:
+                title, link = item
+
+                message = (
+                    f"🤖 هوش مصنوعی\n\n"
+                    f"{title}\n\n"
+                    f"🔗 {link}"
+                )
+
+                send_message(message)
+                break
+
+        except Exception as e:
+            print(f"⚠️ خطا در منبع: {e}")
+
+except Exception as e:
+    print(f"❌ خطای Agent: {e}")
