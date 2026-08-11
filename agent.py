@@ -1,11 +1,12 @@
 import os
 import requests
 import xml.etree.ElementTree as ET
-import hashlib
+from google import genai
 
 print("🤖 AI Channel Agent started!")
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CHANNEL = "@HoshMasnoeiAI6"
 
 RSS_SOURCES = [
@@ -13,17 +14,10 @@ RSS_SOURCES = [
     "https://blog.google/feed/",
 ]
 
-def send_message(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    response = requests.post(
-        url,
-        data={"chat_id": CHANNEL, "text": text},
-        timeout=30
-    )
-    response.raise_for_status()
-    print("✅ پیام منتشر شد.")
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-def get_item(rss_url):
+
+def get_news(rss_url):
     response = requests.get(rss_url, timeout=30)
     response.raise_for_status()
 
@@ -38,25 +32,70 @@ def get_item(rss_url):
 
     return title, link
 
-try:
-    for rss_url in RSS_SOURCES:
-        try:
-            item = get_item(rss_url)
 
-            if item:
-                title, link = item
+def summarize_with_gemini(title):
+    prompt = f"""
+عنوان خبر:
+{title}
 
-                message = (
-                    f"🤖 هوش مصنوعی\n\n"
-                    f"{title}\n\n"
-                    f"🔗 {link}"
-                )
+این خبر را برای یک کانال فارسی هوش مصنوعی آماده کن.
 
-                send_message(message)
-                break
+قوانین:
+- عنوان را به فارسی روان ترجمه کن.
+- یک خلاصه کوتاه 2 تا 3 خطی بنویس.
+- اطلاعات جدیدی اضافه نکن.
+- لحن حرفه‌ای و ساده باشد.
+- فقط متن فارسی را برگردان.
 
-        except Exception as e:
-            print(f"⚠️ خطا در منبع: {e}")
+فرمت:
 
-except Exception as e:
-    print(f"❌ خطای Agent: {e}")
+📰 [عنوان فارسی]
+
+📝 [خلاصه فارسی]
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return response.text.strip()
+
+
+def send_message(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+    response = requests.post(
+        url,
+        data={
+            "chat_id": CHANNEL,
+            "text": text,
+        },
+        timeout=30,
+    )
+
+    response.raise_for_status()
+    print("✅ پیام در کانال منتشر شد.")
+
+
+for rss_url in RSS_SOURCES:
+    try:
+        news = get_news(rss_url)
+
+        if news:
+            title, link = news
+
+            print(f"📰 خبر پیدا شد: {title}")
+
+            translated = summarize_with_gemini(title)
+
+            message = (
+                f"{translated}\n\n"
+                f"🔗 منبع: {link}"
+            )
+
+            send_message(message)
+            break
+
+    except Exception as e:
+        print(f"⚠️ خطا: {e}")
