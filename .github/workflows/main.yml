@@ -3,6 +3,7 @@ name: AI Channel Agent
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   test:
