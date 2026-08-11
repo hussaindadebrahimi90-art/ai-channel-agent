@@ -1,15 +1,17 @@
-import os
 import requests
 
 print("🤖 AI Channel Agent started!")
 
-# تست دریافت اخبار هوش مصنوعی از RSS
-RSS_URL = "https://www.artificialintelligence-news.com/feed/"
+RSS_URL = "https://feeds.feedburner.com/TechCrunch/"
 
-response = requests.get(RSS_URL, timeout=20)
+try:
+    response = requests.get(RSS_URL, timeout=30)
 
-if response.status_code == 200:
-    print("✅ منبع اخبار با موفقیت دریافت شد.")
-    print("📡 Agent آماده دریافت محتوا است.")
-else:
-    print("❌ دریافت منبع ناموفق بود.")
+    if response.status_code == 200:
+        print("✅ منبع اخبار با موفقیت دریافت شد.")
+        print("📡 Agent آماده دریافت محتوا است.")
+    else:
+        print(f"❌ خطای منبع: {response.status_code}")
+
+except requests.RequestException as e:
+    print(f"❌ خطا در اتصال: {e}")
