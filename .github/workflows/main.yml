@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -25,3 +28,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python agent.py
+
+      - name: Save memory
+        run: |
+          git config user.name "AI Channel Agent"
+          git config user.email "actions@github.com"
+          git add posted.json
+          git diff --cached --quiet || git commit -m "Update posted news memory"
+          git push
