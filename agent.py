@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import xml.etree.ElementTree as ET
 from google import genai
@@ -14,7 +15,25 @@ RSS_SOURCES = [
     "https://blog.google/feed/",
 ]
 
+MEMORY_FILE = "posted.json"
+
 client = genai.Client(api_key=GEMINI_API_KEY)
+
+
+def load_memory():
+    if not os.path.exists(MEMORY_FILE):
+        return set()
+
+    try:
+        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    except Exception:
+        return set()
+
+
+def save_memory(memory):
+    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(list(memory), f, ensure_ascii=False, indent=2)
 
 
 def get_news(rss_url):
@@ -78,24 +97,38 @@ def send_message(text):
     print("✅ پیام در کانال منتشر شد.")
 
 
+memory = load_memory()
+
 for rss_url in RSS_SOURCES:
     try:
         news = get_news(rss_url)
 
-        if news:
-            title, link = news
+        if not news:
+            continue
 
-            print(f"📰 خبر پیدا شد: {title}")
+        title, link = news
 
-            translated = summarize_with_gemini(title)
+        # اگر خبر قبلاً منتشر شده، رد شود
+        if link in memory:
+            print("⏭️ این خبر قبلاً منتشر شده است.")
+            continue
 
-            message = (
-                f"{translated}\n\n"
-                f"🔗 منبع: {link}"
-            )
+        print(f"📰 خبر جدید: {title}")
 
-            send_message(message)
-            break
+        translated = summarize_with_gemini(title)
+
+        message = (
+            f"{translated}\n\n"
+            f"🔗 منبع: {link}"
+        )
+
+        send_message(message)
+
+        # ثبت خبر بعد از انتشار موفق
+        memory.add(link)
+        save_memory(memory)
+
+        break
 
     except Exception as e:
         print(f"⚠️ خطا: {e}")
