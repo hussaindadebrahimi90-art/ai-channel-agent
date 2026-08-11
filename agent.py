@@ -1,17 +1,28 @@
+import os
 import requests
 
 print("🤖 AI Channel Agent started!")
+
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHANNEL = "@HoshMasnoeiAI6"
 
 RSS_URL = "https://feeds.feedburner.com/TechCrunch/"
 
 try:
     response = requests.get(RSS_URL, timeout=30)
+    response.raise_for_status()
 
-    if response.status_code == 200:
-        print("✅ منبع اخبار با موفقیت دریافت شد.")
-        print("📡 Agent آماده دریافت محتوا است.")
+    print("✅ اخبار دریافت شد.")
+
+    data = response.text
+
+    # فعلاً فقط تست اتصال است
+    print(f"📡 تعداد کاراکترهای دریافت‌شده: {len(data)}")
+
+    if BOT_TOKEN:
+        print("✅ Telegram Bot Token موجود است.")
     else:
-        print(f"❌ خطای منبع: {response.status_code}")
+        print("❌ Telegram Bot Token پیدا نشد.")
 
-except requests.RequestException as e:
-    print(f"❌ خطا در اتصال: {e}")
+except Exception as e:
+    print(f"❌ خطا: {e}")
