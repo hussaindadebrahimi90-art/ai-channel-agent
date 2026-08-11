@@ -1,4 +1,3 @@
-# GitHub Actions workflow
 name: AI Channel Agent
 
 on:
@@ -10,5 +9,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Run Agent
-        run: python -c "print('AI Channel Agent is running!')"
+        run: python agent.py
