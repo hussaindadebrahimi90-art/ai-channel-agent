@@ -21,19 +21,27 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def load_memory():
-    if not os.path.exists(MEMORY_FILE):
-        return set()
-
     try:
         with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-            return set(json.load(f))
+            data = json.load(f)
+
+        if isinstance(data, list):
+            return set(data)
+
     except Exception:
-        return set()
+        pass
+
+    return set()
 
 
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(list(memory), f, ensure_ascii=False, indent=2)
+        json.dump(
+            sorted(memory),
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
 
 
 def get_news(rss_url):
@@ -41,13 +49,17 @@ def get_news(rss_url):
     response.raise_for_status()
 
     root = ET.fromstring(response.content)
+
     item = root.find(".//item")
 
     if item is None:
         return None
 
-    title = item.findtext("title", "خبر جدید").strip()
+    title = item.findtext("title", "").strip()
     link = item.findtext("link", "").strip()
+
+    if not title or not link:
+        return None
 
     return title, link
 
@@ -55,6 +67,7 @@ def get_news(rss_url):
 def summarize_with_gemini(title):
     prompt = f"""
 عنوان خبر:
+
 {title}
 
 این خبر را برای یک کانال فارسی هوش مصنوعی آماده کن.
@@ -94,13 +107,19 @@ def send_message(text):
     )
 
     response.raise_for_status()
+
     print("✅ پیام در کانال منتشر شد.")
 
 
 memory = load_memory()
 
+print(f"🧠 تعداد خبرهای ذخیره‌شده: {len(memory)}")
+
+
 for rss_url in RSS_SOURCES:
+
     try:
+
         news = get_news(rss_url)
 
         if not news:
@@ -108,12 +127,14 @@ for rss_url in RSS_SOURCES:
 
         title, link = news
 
-        # اگر خبر قبلاً منتشر شده، رد شود
+        print(f"📰 خبر پیدا شد: {title}")
+        print(f"🔗 لینک: {link}")
+
         if link in memory:
             print("⏭️ این خبر قبلاً منتشر شده است.")
             continue
 
-        print(f"📰 خبر جدید: {title}")
+        print("🆕 خبر جدید است.")
 
         translated = summarize_with_gemini(title)
 
@@ -124,11 +145,13 @@ for rss_url in RSS_SOURCES:
 
         send_message(message)
 
-        # ثبت خبر بعد از انتشار موفق
         memory.add(link)
         save_memory(memory)
+
+        print("💾 خبر در حافظه ذخیره شد.")
 
         break
 
     except Exception as e:
-        print(f"⚠️ خطا: {e}")
+
+        print(f"⚠️ خطا در منبع {rss_url}: {e}")
